@@ -175,9 +175,10 @@ void drawSphere(){
 //draw the rectangle and the ball of the adding-cylinders mode
 void drawViewMode(){
   
-  //draw the rectangle at the center of the window
   fill(plateColor);
   pushMatrix();
+  
+    //draw the rectangle at the center of the window
     translate(width/2, height/2,0);
     rect(-plateLength/2, -plateLength/2, plateLength, plateLength);
     
@@ -212,7 +213,7 @@ void drawCylinders3D(){
 void mouseReleased(){
   //test if we are in view mode
   if(keyPressed && keyCode == SHIFT){
-    if(check()){
+    if(check() && !overlap(sphereLocation, new PVector(map(mouseX, leftSide, rightSide, -200, 200), -10, map(mouseY, topSide, bottomSide, -200, 200)))){
       cylinders.add(new PVector(mouseX, mouseY));
     }
   }
@@ -300,20 +301,18 @@ class Mover {
       cylinder = cylinders.get(i);
       
       mappedCylinder.x = map(cylinder.x, leftSide, rightSide, -200, 200);
+      mappedCylinder.y = -plateHeight;
       mappedCylinder.z = map(cylinder.y, topSide, bottomSide, -200, 200);
       
       if(overlap(sphereLocation, mappedCylinder)){
         
         PVector n = sphereLocation.sub(mappedCylinder);
-        sphereLocation = mappedCylinder.add(n);
         n.y = 0;
+        sphereLocation = mappedCylinder.add(n);
         n = n.normalize();
         
-        println(n);
-        println(velocity);
         velocity.sub(n.mult(1.5*velocity.dot(n)));
         velocity.y = 0;
-        println(velocity);
       }
     }
   }
