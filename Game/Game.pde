@@ -27,7 +27,7 @@ float rotateX = 0;
 float rotateZ = 0;
 
 //size of the cylinder
-float cylinderBaseSize = 10;
+float cylinderBaseSize = 50;
 float cylinderHeight = 30;
 int cylinderResolution = 40;
 
@@ -146,16 +146,14 @@ void drawBasics(){
   directionalLight(50, 100, 125, 0, -1, 0);
   ambientLight(102, 102, 102);
   background(bgColor);
-  textSize(15);
-  text("speed : " + speed,10, 20);
 }
 
 //draw the plate
 void drawGame(){
   fill(plateColor);
   translate(width/2, height/2, 0);
-  rotateX = map(angleX, -60, 60, -PI/3, PI/3);
-  rotateZ = map(angleZ, -60, 60, -PI/3, PI/3);
+  rotateX = radians(angleX);
+  rotateZ = radians(angleZ);
   rotateX(rotateX);
   rotateZ(rotateZ);
   box(plateLength, plateHeight, plateLength);
@@ -203,7 +201,7 @@ void drawCylinders3D(){
   for(int i = 0; i < cylinders.size(); i++){
     cylinderVector = cylinders.get(i);
     pushMatrix();
-      translate(map(cylinderVector.x, leftSide, rightSide, -200, 200), -10, map(cylinderVector.y, topSide, bottomSide, -200, 200));
+      translate(map(cylinderVector.x, leftSide, rightSide, -200, 200), -plateHeight/2, map(cylinderVector.y, topSide, bottomSide, -200, 200));
       rotateX(HALF_PI);
       shape(cylinder);
     popMatrix();
@@ -213,7 +211,7 @@ void drawCylinders3D(){
 void mouseReleased(){
   //test if we are in view mode
   if(keyPressed && keyCode == SHIFT){
-    if(check() && !overlap(sphereLocation, new PVector(map(mouseX, leftSide, rightSide, -200, 200), -10, map(mouseY, topSide, bottomSide, -200, 200)))){
+    if(check() && !overlap(sphereLocation, new PVector(map(mouseX, leftSide, rightSide, -200, 200), -plateHeight/2, map(mouseY, topSide, bottomSide, -200, 200)))){
       cylinders.add(new PVector(mouseX, mouseY));
     }
   }
@@ -229,8 +227,7 @@ boolean check(){
 }
 
 boolean overlap(PVector sphere, PVector cylinder){
-  if(sphere.x <= cylinder.x + cylinderBaseSize && sphere.x >= cylinder.x - cylinderBaseSize 
-          && sphere.z <= cylinder.z + cylinderBaseSize && sphere.z >= cylinder.z - cylinderBaseSize){
+  if(dist(sphere.x, sphere.y, sphere.z, cylinder.x, cylinder.y, cylinder.z) <= sphereSize+cylinderBaseSize){
     return true;
   }
   return false;
@@ -248,6 +245,7 @@ class Mover {
   PVector velocity;
   PVector gravityForce;
   PVector friction;
+  PVector n;
   
   Mover() {
     sphereLocation = new PVector(0, -plateHeight, 0);
@@ -279,17 +277,17 @@ class Mover {
   
   void checkEdges() {
     if(sphereLocation.x - sphereSize < -plateLength/2){
-      velocity.x = abs(velocity.x)/2;
+      velocity.x = -velocity.x/2;
       sphereLocation.x = -plateLength/2+sphereSize;
     } else if(sphereLocation.x + sphereSize > plateLength/2){
-      velocity.x = -abs(velocity.x)/2;
+      velocity.x = -velocity.x/2;
       sphereLocation.x = plateLength/2-sphereSize;
     }
     if(sphereLocation.z + sphereSize > plateLength/2){
-      velocity.z = -abs(velocity.z)/2;
+      velocity.z = -velocity.z/2;
       sphereLocation.z = plateLength/2-sphereSize;
     } else if(sphereLocation.z - sphereSize < -plateLength/2){
-      velocity.z = abs(velocity.z)/2;
+      velocity.z = -velocity.z/2;
       sphereLocation.z = -plateLength/2+sphereSize;
     }
   }
@@ -305,8 +303,7 @@ class Mover {
       mappedCylinder.z = map(cylinder.y, topSide, bottomSide, -200, 200);
       
       if(overlap(sphereLocation, mappedCylinder)){
-        
-        PVector n = sphereLocation.sub(mappedCylinder);
+        n = sphereLocation.sub(mappedCylinder);
         n.y = 0;
         sphereLocation = mappedCylinder.add(n);
         n = n.normalize();
