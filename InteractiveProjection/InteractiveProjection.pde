@@ -2,29 +2,52 @@ float scale = 1;
 float rotateX = 0;
 float rotateY = 0;
 
-void settings(){
-   size(1000, 1000, P2D);
+void settings() {
+size(1000, 1000, P2D);
 }
 
-void setup(){ 
+void setup() {
 }
+void draw() {
+  background(255);
+  My3DPoint eye = new My3DPoint(-100, -100, -5000);
+  My3DPoint origin = new My3DPoint(0, 0, 0); //The first vertex of your cuboid
+  My3DBox input3DBox = new My3DBox(origin, 100,150,300);
+  
+  textSize(20);
+  text("Press(hold) right or left to rotate around Y axis", 300, 100);
+  text("Press(hold) up or down to rotate around X axis", 300, 150);
+  text("Click and drag to increase(decrease) size", 300, 200);
+  fill(0, 102, 153);
+  
+  float[][] transformScale = scaleMatrix(scale, scale, scale);
+  
+  
+  //Can hold button instead of clicking
+  if(keyPressed == true){
+      if(keyCode == UP){
+        rotateX += Math.PI/24;
+      }  
+       if(keyCode == DOWN){
+        rotateX += -Math.PI/24 ;
+      }
+      
+      if(keyCode == RIGHT){
+        rotateY += Math.PI / 24;
+      }
+      if(keyCode == LEFT){
+        rotateY += -Math.PI / 24;
+      }
+    }
+  
+  float[][] transformRotx = rotateXMatrix(rotateX);
+  float[][] transformRoty = rotateYMatrix(rotateY);
+  
+  input3DBox = transformBox(input3DBox, transformScale);
+  input3DBox = transformBox(input3DBox, transformRotx);
+  input3DBox = transformBox(input3DBox, transformRoty);
+  projectBox(eye, input3DBox).render();
 
-void draw(){
-   background(255, 255, 255);
-   My3DPoint eye = new My3DPoint(0, 0, -1000);
-   My3DPoint origin = new My3DPoint(width/2, height/2, 0);
-   My3DBox input3DBox = new My3DBox(origin, 100, 150, 300);
-   
-   float[][] scaling = scaleMatrix(scale, scale, scale);
-   input3DBox = transformBox(input3DBox, scaling);
-   
-   float[][] rotatingX = rotateXMatrix(rotateX/PI);
-   input3DBox = transformBox(input3DBox, rotatingX);
-   
-   float[][] rotatingY = rotateYMatrix(rotateY/PI);
-   input3DBox = transformBox(input3DBox, rotatingY);
-   
-   projectBox(eye, input3DBox).render();   
 }
 
 void mouseDragged() 
@@ -37,23 +60,8 @@ void mouseDragged()
     scale -= 0.03;
 }
 
-void keyPressed() {
-  if (key == CODED) {
-    if (keyCode == UP) {
-      rotateX += 1;
-    } else if (keyCode == DOWN) {
-      rotateX -= 1;
-    } 
-   else if (keyCode == RIGHT) {
-      rotateY += 1;
-    } else if (keyCode == LEFT) {
-      rotateY -= 1;
-    }
-  }
-}
-
 /*
---------------------------------------------------------------------------------------------------------------
+------------------------------DEFINITION OF A 2D POINT------------------------------
 */
 
 class My2DPoint {
@@ -98,6 +106,9 @@ class My2DBox {
   }
 }
 
+/*
+------------------------------DEFINITION OF A 3D POINT------------------------------
+*/
 class My3DBox {
   My3DPoint[] p;
   My3DBox(My3DPoint origin, float dimX, float dimY, float dimZ){
@@ -125,34 +136,19 @@ My2DPoint projectPoint(My3DPoint eye, My3DPoint p) {
 }
 
 My2DBox projectBox(My3DPoint eye, My3DBox box) {
-  for(int i = 0; i < box.p.length; i++){
-    
+  My2DPoint[] s = new My2DPoint[8];
+  for(int i = 0; i < 8; i++){
+    s[i] = projectPoint(eye, box.p[i]);
   }
-   My2DPoint[] s = new My2DPoint[]{projectPoint(eye, box.p[0]),
-                                   projectPoint(eye, box.p[1]),
-                                   projectPoint(eye, box.p[2]),
-                                   projectPoint(eye, box.p[3]),
-                                   projectPoint(eye, box.p[4]),
-                                   projectPoint(eye, box.p[5]),
-                                   projectPoint(eye, box.p[6]),
-                                   projectPoint(eye, box.p[7])
-                               };
-  
   return new My2DBox(s);
 }
 
 My3DBox transformBox(My3DBox box, float[][] transformMatrix) {
-  My3DPoint[] p = new My3DPoint[]{euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[0]))),
-                                  euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[1]))),
-                                  euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[2]))),
-                                  euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[3]))),
-                                  euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[4]))),
-                                  euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[5]))),
-                                  euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[6]))),
-                                  euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[7])))
-                              };
-  My3DBox result = new My3DBox(p);
-  return result;
+  My3DPoint[] points = new My3DPoint[8];
+  for(int i = 0; i < 8; i++){
+    points[i] = euclidian3DPoint(matrixProduct(transformMatrix, homogeneous3DPoint(box.p[i])));
+  }
+  return new My3DBox(points);
 }
 
 My3DPoint euclidian3DPoint(float[] a) {
@@ -161,7 +157,7 @@ My3DPoint euclidian3DPoint(float[] a) {
 }
 
 /*
---------------------------------------------------------------------------------------------------------------
+------------------------------MATRIX TRANSFORMATION------------------------------
 */
 
 float[] homogeneous3DPoint(My3DPoint p) {

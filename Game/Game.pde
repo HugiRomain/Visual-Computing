@@ -4,15 +4,10 @@ float plateLength = 400;
 float plateHeight = 20;
 float sphereRadius = 10;
 
-//define the size of the window
-int width = 1000;
-int height = 600;
-
 //define the coordinate of the 4 side of the plate in adding-cylinders mode
-float leftSide = (width-plateLength)/2;
-float rightSide = (width+plateLength)/2;
-float topSide = (height-plateLength)/2;
-float bottomSide = (height+plateLength)/2;
+float leftSide, rightSide, topSide, bottomSide;
+
+float pWidth, pHeight;
 
 //define the colors of the elements of the game
 color plateColor = #16F217;
@@ -34,12 +29,15 @@ PVector sphereLocation;
 ArrayList<PVector> cylinders = new ArrayList<PVector>();
 
 void settings() {
-  size(width, height, P3D);
+  size(1000, 600, P3D);
 }
 void setup() {
   noStroke();
   mover = new Mover();
   cylinder = new Cylinder();
+  
+  pWidth = width;
+  pHeight = height;
 }
 
 void draw() {
@@ -93,7 +91,7 @@ float bounds(float upperBound, float lowerBound, float angle){
 }
 
 //draw the basics (light and background)
-void drawBasics(){
+void drawBasics(){  
   directionalLight(50, 100, 125, 0, -1, 0);
   ambientLight(102, 102, 102);
   background(bgColor);
@@ -126,7 +124,25 @@ void drawSphere(){
 }
 
 //draw the rectangle and the ball of the adding-cylinders mode
-void drawViewMode(){ 
+void drawViewMode(){   
+  
+  //check if the window has been resized
+  if(pWidth != width || pHeight != height){
+     for (PVector cylinderVector: cylinders){
+       cylinderVector.x = map(cylinderVector.x, leftSide, rightSide, (width-plateLength)/2, (width+plateLength)/2);
+       cylinderVector.y = map(cylinderVector.y, topSide, bottomSide, (height-plateLength)/2, (height+plateLength)/2);
+       pWidth = width;
+       pHeight = height;
+     }
+  }
+  
+  //initialize the 4 side of the plate
+  //(initialized here in case if the window is resized)
+  leftSide = (width-plateLength)/2;
+  rightSide = (width+plateLength)/2;
+  topSide = (height-plateLength)/2;
+  bottomSide = (height+plateLength)/2;
+  
   fill(plateColor);
   pushMatrix();  
     //draw the rectangle at the center of the window
@@ -145,18 +161,14 @@ void drawViewMode(){
 
 //draw the cylinders in the adding-cylinders mode
 void drawCylinders2D(){
-  PVector cylinderVector = new PVector();
-  for(int i = 0; i < cylinders.size(); i++){
-    cylinderVector = cylinders.get(i);
+  for(PVector cylinderVector : cylinders){
     cylinder.update(cylinderVector.x, cylinderVector.y);
   }
 }
 
 //draws the cylinders on the game
 void drawCylinders3D(){
-  PVector cylinderVector = new PVector();
-  for(int i = 0; i < cylinders.size(); i++){
-    cylinderVector = cylinders.get(i);
+  for(PVector cylinderVector : cylinders){
     pushMatrix();
       translate(map(cylinderVector.x, leftSide, rightSide, -200, 200), -plateHeight/2, map(cylinderVector.y, topSide, bottomSide, -200, 200));
       rotateX(HALF_PI);
@@ -165,10 +177,12 @@ void drawCylinders3D(){
   }
 }
 
+//create a cylinder if the user release the mouse's button
+//(we use mouseReleased instead of mouseClicked because it works better if the user make long-click)
 void mouseReleased(){
   //check if we are in view mode
   if(keyPressed && keyCode == SHIFT){
-    //chekc if the mouse position is on he plate and if it's not on the ball's position
+    //check if the mouse position is on he plate and if it's not on the ball's position
     if(check() && !overlap(sphereLocation, new PVector(map(mouseX, leftSide, rightSide, -200, 200), -plateHeight/2, map(mouseY, topSide, bottomSide, -200, 200)))){
       cylinders.add(new PVector(mouseX, mouseY));
     }
@@ -271,7 +285,7 @@ class Mover {
     PVector mappedCylinder = new PVector();
     for(PVector p: positions){
       
-      //map the point from the adding-cylinders mode referential to the game's one
+      //map the point from the referential of the adding-cylinders mode to the game's one
       mappedCylinder.x = map(p.x, leftSide, rightSide, -plateLength/2, plateLength/2);
       mappedCylinder.y = -plateHeight/2;
       mappedCylinder.z = map(p.y, topSide, bottomSide, -plateLength/2, plateLength/2);
@@ -286,10 +300,10 @@ class Mover {
         velocity = velocity.sub(v);
       }
     }
-
   }
 }
 
+//definition of the cylinder class, which is used to display cylinders
 class Cylinder {
   
   private float cylinderBaseSize = 20;
