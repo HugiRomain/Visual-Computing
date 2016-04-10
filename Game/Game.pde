@@ -2,7 +2,7 @@
 float bgColor = 240;
 float plateLength = 400;
 float plateHeight = 20;
-float sphereSize = 10;
+float sphereRadius = 10;
 
 //define the size of the window
 int width = 1000;
@@ -26,16 +26,10 @@ float angleZ = 0;
 float rotateX = 0;
 float rotateZ = 0;
 
-//size of the cylinder
-float cylinderBaseSize = 50;
-float cylinderHeight = 30;
-int cylinderResolution = 40;
-
 //define the mover and the sphereLocation
 Mover mover;
+Cylinder cylinder;
 PVector sphereLocation;
-
-PShape cylinder, openCylinder, topCylinder, bottomCylinder;
 
 ArrayList<PVector> cylinders = new ArrayList<PVector>();
 
@@ -44,51 +38,8 @@ void settings() {
 }
 void setup() {
   noStroke();
-  
   mover = new Mover();
-  
-  float angle;
-  float[] x = new float[cylinderResolution + 1];
-  float[] y = new float[cylinderResolution + 1];
-
-  //get the x and y position on a circle for all the sides
-  for(int i = 0; i < x.length; i++) {
-    angle = (TWO_PI / cylinderResolution) * i;
-    x[i] = sin(angle) * cylinderBaseSize;
-    y[i] = cos(angle) * cylinderBaseSize;
-  }
-  
-  fill(cylinderColor);
-  
-  cylinder = createShape(GROUP);
-  openCylinder = createShape();
-  openCylinder.beginShape(QUAD_STRIP);
-  topCylinder = createShape();
-  topCylinder.beginShape(TRIANGLE);
-  bottomCylinder = createShape();
-  bottomCylinder.beginShape(TRIANGLE);
-  
-  //draw the cylinder
-  for(int i = 0; i < x.length; i++) {
-    openCylinder.vertex(x[i], y[i] , 0);
-    openCylinder.vertex(x[i], y[i], cylinderHeight);
-    
-    topCylinder.vertex(x[i], y[i] , cylinderHeight);
-    topCylinder.vertex(0, 0, cylinderHeight);
-    topCylinder.vertex(x[(i+1)%cylinderResolution], y[(i+1)%cylinderResolution] , cylinderHeight);
-    
-    bottomCylinder.vertex(x[i], y[i] , 0);
-    bottomCylinder.vertex(0, 0, 0);
-    bottomCylinder.vertex(x[(i+1)%cylinderResolution], y[(i+1)%cylinderResolution] , 0);
-  }
-  
-  topCylinder.endShape();
-  bottomCylinder.endShape();
-  openCylinder.endShape();
-  
-  cylinder.addChild(topCylinder);
-  cylinder.addChild(openCylinder);
-  cylinder.addChild(bottomCylinder);
+  cylinder = new Cylinder();
 }
 
 void draw() {
@@ -129,7 +80,7 @@ void mouseWheel(MouseEvent event) {
   }
 }
 
-//method to bound the angle of the plate(X and Z axis)
+//bound the angle of the plate(X and Z axis)
 float bounds(float upperBound, float lowerBound, float angle){
   if(angle > upperBound){
     return upperBound;
@@ -146,6 +97,11 @@ void drawBasics(){
   directionalLight(50, 100, 125, 0, -1, 0);
   ambientLight(102, 102, 102);
   background(bgColor);
+  fill(255);
+  textSize(20);
+  text("Speed : " + speed, 10, 30);
+  text("Angle X : " + angleX + " --- Angle Z : " + angleZ, 10, 50);
+  text("Press 'r' to reset the game", 10, 70);
 }
 
 //draw the plate
@@ -163,27 +119,28 @@ void drawGame(){
 
 //draw the sphere
 void drawSphere(){
-  fill(sphereColor);
   mover.update();
   mover.checkEdges();
-  mover.checkCylinderCollision();
+  mover.checkCylinderCollision(cylinders);
   mover.display();
 }
 
 //draw the rectangle and the ball of the adding-cylinders mode
-void drawViewMode(){
-  
+void drawViewMode(){ 
   fill(plateColor);
-  pushMatrix();
-  
+  pushMatrix();  
     //draw the rectangle at the center of the window
     translate(width/2, height/2,0);
     rect(-plateLength/2, -plateLength/2, plateLength, plateLength);
     
     //draw the ball according to the current position of the sphere
     fill(sphereColor);
-    ellipse(sphereLocation.x,sphereLocation.z , sphereSize, sphereSize);
+    ellipse(sphereLocation.x,sphereLocation.z , 2*sphereRadius, 2*sphereRadius);
   popMatrix();
+   
+  //draw a circle with a radius equals to the cylinder base size around the pointer
+  fill(cylinderColor);
+  ellipse(mouseX, mouseY , 2*cylinder.getBaseSize(), 2*cylinder.getBaseSize());
 }
 
 //draw the cylinders in the adding-cylinders mode
@@ -191,11 +148,11 @@ void drawCylinders2D(){
   PVector cylinderVector = new PVector();
   for(int i = 0; i < cylinders.size(); i++){
     cylinderVector = cylinders.get(i);
-    shape(cylinder, cylinderVector.x, cylinderVector.y);
+    cylinder.update(cylinderVector.x, cylinderVector.y);
   }
 }
 
-//draw the cylinders on the game
+//draws the cylinders on the game
 void drawCylinders3D(){
   PVector cylinderVector = new PVector();
   for(int i = 0; i < cylinders.size(); i++){
@@ -203,37 +160,48 @@ void drawCylinders3D(){
     pushMatrix();
       translate(map(cylinderVector.x, leftSide, rightSide, -200, 200), -plateHeight/2, map(cylinderVector.y, topSide, bottomSide, -200, 200));
       rotateX(HALF_PI);
-      shape(cylinder);
+      cylinder.update();
     popMatrix();
   }
 }
 
 void mouseReleased(){
-  //test if we are in view mode
+  //check if we are in view mode
   if(keyPressed && keyCode == SHIFT){
+    //chekc if the mouse position is on he plate and if it's not on the ball's position
     if(check() && !overlap(sphereLocation, new PVector(map(mouseX, leftSide, rightSide, -200, 200), -plateHeight/2, map(mouseY, topSide, bottomSide, -200, 200)))){
       cylinders.add(new PVector(mouseX, mouseY));
     }
   }
 }
 
+void keyPressed(){
+  if(key == 'R' || key == 'r'){
+     cylinders = new ArrayList<PVector>();
+     mover = new Mover();
+     angleX = angleZ = 0;
+     speed = 1;
+  }
+}
+
 //check if the cylinder is on the plate and if he is not on another cylinder or on the ball
 boolean check(){
-  if(mouseX + cylinderBaseSize <= rightSide && mouseX - cylinderBaseSize >= leftSide
-        && mouseY + cylinderBaseSize <= bottomSide && mouseY - cylinderBaseSize >= topSide){
+  if(mouseX + cylinder.getBaseSize() <= rightSide && mouseX - cylinder.getBaseSize() >= leftSide
+        && mouseY + cylinder.getBaseSize() <= bottomSide && mouseY - cylinder.getBaseSize() >= topSide){
     return true;
   }
   return false;
 }
 
-boolean overlap(PVector sphere, PVector cylinder){
-  if(dist(sphere.x, sphere.y, sphere.z, cylinder.x, cylinder.y, cylinder.z) <= sphereSize+cylinderBaseSize){
+//check if the 2 parameters overlap
+boolean overlap(PVector sphere, PVector cylinderVector){
+  if(dist(sphere.x, sphere.y, sphere.z, cylinderVector.x, cylinderVector.y, cylinderVector.z) <= sphereRadius + cylinder.getBaseSize()){
     return true;
   }
   return false;
 }
 
-
+//defition of the Mover class, which is used to update the sphere location and to display it
 class Mover {
   
   //physic contants
@@ -254,6 +222,7 @@ class Mover {
     friction = new PVector();
   }
   
+  //update the sphere location
   void update() {     
     //get the gravity force
     gravityForce.x = sin(rotateZ) * gravityConstant;
@@ -270,47 +239,121 @@ class Mover {
     sphereLocation.add(velocity);
   }
   
+  //display the sphere
   void display() {
+    fill(sphereColor);
     translate(sphereLocation.x, sphereLocation.y, sphereLocation.z);
-    sphere(sphereSize);
+    sphere(sphereRadius);
   }
   
+  //check if the sphere hits a wall
   void checkEdges() {
-    if(sphereLocation.x - sphereSize < -plateLength/2){
+    if(sphereLocation.x - sphereRadius < -plateLength/2){
       velocity.x = -velocity.x/2;
-      sphereLocation.x = -plateLength/2+sphereSize;
-    } else if(sphereLocation.x + sphereSize > plateLength/2){
+      sphereLocation.x = -plateLength/2+sphereRadius;
+    } else if(sphereLocation.x + sphereRadius > plateLength/2){
       velocity.x = -velocity.x/2;
-      sphereLocation.x = plateLength/2-sphereSize;
+      sphereLocation.x = plateLength/2-sphereRadius;
     }
-    if(sphereLocation.z + sphereSize > plateLength/2){
+    if(sphereLocation.z + sphereRadius > plateLength/2){
       velocity.z = -velocity.z/2;
-      sphereLocation.z = plateLength/2-sphereSize;
-    } else if(sphereLocation.z - sphereSize < -plateLength/2){
+      sphereLocation.z = plateLength/2-sphereRadius;
+    } else if(sphereLocation.z - sphereRadius < -plateLength/2){
       velocity.z = -velocity.z/2;
-      sphereLocation.z = -plateLength/2+sphereSize;
+      sphereLocation.z = -plateLength/2+sphereRadius;
     }
   }
   
-  void checkCylinderCollision(){
-    PVector cylinder = new PVector();
+  void checkCylinderCollision(ArrayList<PVector> positions){
+    Cylinder cylinder = new Cylinder();
+    PVector normal;
+    PVector normalized;
     PVector mappedCylinder = new PVector();
-    for(int i = 0; i < cylinders.size(); i++){
-      cylinder = cylinders.get(i);
+    for(PVector p: positions){
       
-      mappedCylinder.x = map(cylinder.x, leftSide, rightSide, -200, 200);
-      mappedCylinder.y = -plateHeight;
-      mappedCylinder.z = map(cylinder.y, topSide, bottomSide, -200, 200);
+      //map the point from the adding-cylinders mode referential to the game's one
+      mappedCylinder.x = map(p.x, leftSide, rightSide, -plateLength/2, plateLength/2);
+      mappedCylinder.y = -plateHeight/2;
+      mappedCylinder.z = map(p.y, topSide, bottomSide, -plateLength/2, plateLength/2);
       
+      //check if there is a collisin between the ball and the cylinder
       if(overlap(sphereLocation, mappedCylinder)){
-        n = sphereLocation.sub(mappedCylinder);
-        n.y = 0;
-        sphereLocation = mappedCylinder.add(n);
-        n = n.normalize();
-        
-        velocity.sub(n.mult(1.5*velocity.dot(n)));
-        velocity.y = 0;
+        normal = new PVector(sphereLocation.x - mappedCylinder.x, 0, sphereLocation.z - mappedCylinder.z);
+        normalized = normal.normalize();
+        sphereLocation.x = mappedCylinder.x + normalized.x * (sphereRadius +  cylinder.getBaseSize());
+        sphereLocation.z = mappedCylinder.z + normalized.z * (sphereRadius +  cylinder.getBaseSize());
+        PVector v = normalized.mult(1.5 * PVector.dot(velocity, normalized));
+        velocity = velocity.sub(v);
       }
     }
+
   }
+}
+
+class Cylinder {
+  
+  private float cylinderBaseSize = 20;
+  private float cylinderHeight = 100;
+  private int cylinderResolution = 40;
+  
+  PShape cylinderShape, openCylinder, topCylinder, bottomCylinder;
+  
+  Cylinder(){
+    float angle;
+    int mid = 0;
+    float[] x = new float[cylinderResolution + 1];
+    float[] y = new float[cylinderResolution + 1];
+    
+    //get the x and y position on a circle for all the sides
+    for(int i = 0; i < x.length; i++) {
+      angle = (TWO_PI / cylinderResolution) * i;
+      x[i] = sin(angle) * cylinderBaseSize;
+      y[i] = cos(angle) * cylinderBaseSize;
+    }
+    mid = x.length / 2;
+    float centerx = (x[mid] + x[0]) / 2;
+    float centery = (y[mid] + y[0]) / 2;
+    
+    fill(cylinderColor);
+    
+    cylinderShape = createShape(GROUP);
+    openCylinder = createShape();
+    openCylinder.beginShape(QUAD_STRIP);
+    topCylinder = createShape();
+    bottomCylinder = createShape();
+    topCylinder.beginShape(TRIANGLE_FAN);
+    bottomCylinder.beginShape(TRIANGLE_FAN);
+    
+    topCylinder.vertex(centerx, centery, cylinderHeight);
+    bottomCylinder.vertex(centerx, centery, 0);
+    
+    //draws the border of the cylinder
+    for(int i = 0; i < x.length; i++) {
+      openCylinder.vertex(x[i], y[i] , 0);
+      openCylinder.vertex(x[i], y[i], cylinderHeight);
+      topCylinder.vertex(x[i], y[i], cylinderHeight);
+      bottomCylinder.vertex(x[i], y[i], 0);
+    }
+    
+    openCylinder.endShape();
+    topCylinder.endShape();
+    bottomCylinder.endShape();
+    
+    cylinderShape.addChild(topCylinder);
+    cylinderShape.addChild(openCylinder);
+    cylinderShape.addChild(bottomCylinder);
+    
+    }
+    
+    void update(){
+      shape(cylinderShape);
+    }
+    
+    void update(float x, float y){
+      shape(cylinderShape, x, y);
+    }
+    
+    float getBaseSize(){
+      return cylinderBaseSize;
+    }
 }
